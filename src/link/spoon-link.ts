@@ -111,6 +111,11 @@ export class SpoonLink {
     return this.manager !== null;
   }
 
+  /** 連携の ID（設定などの読み書きに使う）。連携していなければ null */
+  connectionId(): string | null {
+    return this.connection?.id ?? null;
+  }
+
   /** 連携中のトークン。連携していなければ null */
   tokens(): TokenManager | null {
     return this.manager;
