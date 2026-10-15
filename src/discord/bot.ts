@@ -35,6 +35,14 @@ export const COMMANDS = [
     .setName("unlink")
     .setDescription("Spoon との連携を解除する（確認が出ます）")
     .setContexts(InteractionContextType.Guild),
+  new SlashCommandBuilder()
+    .setName("join")
+    .setDescription("推しの配信にボットを参加させる")
+    .setContexts(InteractionContextType.Guild),
+  new SlashCommandBuilder()
+    .setName("leave")
+    .setDescription("ボットを推しの配信から退室させる")
+    .setContexts(InteractionContextType.Guild),
 ];
 
 export type CommandHandler = (interaction: CommandInteractionLike) => Promise<void>;
@@ -153,6 +161,12 @@ function wrapCommand(interaction: ChatInputCommandInteraction): CommandInteracti
     reply: async (reply) => {
       await interaction.reply(toReplyPayload(reply));
     },
+    deferReply: async () => {
+      await interaction.deferReply();
+    },
+    editReply: async (reply) => {
+      await interaction.editReply(toPayload(reply));
+    },
   };
 }
 
@@ -168,6 +182,9 @@ function wrapButton(interaction: ButtonInteraction): ButtonInteractionLike {
     },
     deferUpdate: async () => {
       await interaction.deferUpdate();
+    },
+    deferReply: async () => {
+      await interaction.deferReply();
     },
     editReply: async (reply) => {
       await interaction.editReply(toPayload(reply));

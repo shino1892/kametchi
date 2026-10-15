@@ -35,7 +35,13 @@ function setup(options: { linked?: boolean } = {}) {
 
 function command(userId = "user-1") {
   const replies: ReplyOptions[] = [];
-  return { userId, replies, reply: async (r: ReplyOptions) => void replies.push(r) };
+  return {
+    userId,
+    replies,
+    reply: async (r: ReplyOptions) => void replies.push(r),
+    deferReply: async () => {},
+    editReply: async (r: BotReply) => void replies.push(r),
+  };
 }
 
 function button(customId: string, userId = "user-1") {
@@ -54,6 +60,9 @@ function button(customId: string, userId = "user-1") {
     },
     deferUpdate: async () => {
       steps.push("defer");
+    },
+    deferReply: async () => {
+      steps.push("deferReply");
     },
     editReply: async (r) => {
       steps.push("edit");

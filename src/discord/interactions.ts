@@ -25,6 +25,9 @@ export interface ReplyOptions extends BotReply {
 export interface CommandInteractionLike {
   userId: string;
   reply(reply: ReplyOptions): Promise<void>;
+  /** 時間のかかる処理の前に応答しておく（あとで editReply で返信を書く。返信は全員に見える） */
+  deferReply(): Promise<void>;
+  editReply(reply: BotReply): Promise<void>;
 }
 
 export interface ButtonInteractionLike {
@@ -34,7 +37,9 @@ export interface ButtonInteractionLike {
   update(reply: BotReply): Promise<void>;
   /** 新しい返信を送る */
   reply(reply: ReplyOptions): Promise<void>;
-  /** 時間のかかる処理の前に応答しておく（あとで editReply で書き換える） */
+  /** 時間のかかる処理の前に応答しておく（あとで editReply でボタンのメッセージを書き換える） */
   deferUpdate(): Promise<void>;
+  /** 時間のかかる処理の前に応答しておく（あとで editReply で新しい返信を書く。全員に見える） */
+  deferReply(): Promise<void>;
   editReply(reply: BotReply): Promise<void>;
 }
