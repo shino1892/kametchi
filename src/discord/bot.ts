@@ -10,6 +10,7 @@ import {
   GatewayIntentBits,
   type Interaction,
   InteractionContextType,
+  type Message,
   MessageFlags,
   REST,
   RESTJSONErrorCodes,
@@ -43,11 +44,23 @@ export const COMMANDS = [
     .setName("leave")
     .setDescription("ボットを推しの配信から退室させる")
     .setContexts(InteractionContextType.Guild),
+  new SlashCommandBuilder()
+    .setName("heart")
+    .setDescription("ハートコメントをオン・オフする（省略すると今の設定を表示）")
+    .setContexts(InteractionContextType.Guild)
+    .addStringOption((option) =>
+      option
+        .setName("state")
+        .setDescription("オンかオフ")
+        .addChoices({ name: "オン", value: "on" }, { name: "オフ", value: "off" }),
+    ),
 ];
 
 export type CommandHandler = (interaction: CommandInteractionLike) => Promise<void>;
 /** 自分のボタンなら処理して true を返す */
 export type ButtonHandler = (interaction: ButtonInteractionLike) => Promise<boolean>;
+/** チャットチャンネルへの投稿。付けるリアクションと、理由の返信を返す */
+export type ChatMessageHandler = (content: string) => Promise<{ reaction: string; reply?: string }>;
 
 export interface DiscordBotOptions {
   discord: Config["discord"];
@@ -63,10 +76,19 @@ export class DiscordBot {
   readonly client: Client;
   private readonly commands = new Map<string, CommandHandler>();
   private readonly buttons: ButtonHandler[] = [];
+  private chatHandler: ChatMessageHandler | null = null;
 
   constructor(private readonly options: DiscordBotOptions) {
-    this.client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    this.client = new Client({
+      intents: [
+        GatewayIntentBits.Guilds,
+        // チャットチャンネルへの投稿を配信のチャットに送るため（仕様書 §7.2）
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+      ],
+    });
     this.client.on(Events.InteractionCreate, (interaction) => void this.dispatch(interaction));
+    this.client.on(Events.MessageCreate, (message) => void this.relay(message));
     this.client.on(Events.Error, (error) => options.onError?.(error, "discord client error"));
   }
 
@@ -76,6 +98,11 @@ export class DiscordBot {
 
   onButton(handler: ButtonHandler): void {
     this.buttons.push(handler);
+  }
+
+  /** DISCORD_CHAT_CHANNEL_ID のチャンネルへの、人の投稿を受け取る */
+  onChatMessage(handler: ChatMessageHandler): void {
+    this.chatHandler = handler;
   }
 
   /** ログインし、スラッシュコマンドを登録する */
@@ -125,6 +152,34 @@ export class DiscordBot {
     }
   }
 
+  private async relay(message: Message): Promise<void> {
+    const handler = this.chatHandler;
+    if (
+      !handler ||
+      message.guildId !== this.options.discord.guildId ||
+      message.channelId !== this.options.discord.chatChannelId ||
+      message.author.bot ||
+      message.webhookId !== null ||
+      message.system
+    ) {
+      return;
+    }
+    try {
+      // メンションは <@id> ではなく表示名にして送る
+      const outcome = await handler(message.cleanContent);
+      await message.react(outcome.reaction);
+      if (outcome.reply) {
+        await message.reply({
+          content: outcome.reply,
+          allowedMentions: { parse: [], repliedUser: false },
+        });
+      }
+    } catch (error) {
+      this.options.onError?.(error, "chat relay failed");
+      await message.react("❌").catch(() => {});
+    }
+  }
+
   private async dispatch(interaction: Interaction): Promise<void> {
     // 決めたサーバーの中の操作だけを受け付ける
     if (interaction.guildId !== this.options.discord.guildId) return;
@@ -158,6 +213,7 @@ export class DiscordBot {
 function wrapCommand(interaction: ChatInputCommandInteraction): CommandInteractionLike {
   return {
     userId: interaction.user.id,
+    option: (name) => interaction.options.getString(name),
     reply: async (reply) => {
       await interaction.reply(toReplyPayload(reply));
     },

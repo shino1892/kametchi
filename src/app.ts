@@ -1,3 +1,7 @@
+import { ChatSender } from "./chat/chat-sender.js";
+import { parseDjCommand } from "./chat/dj-commands.js";
+import { HeartCommenter } from "./chat/heart-comment.js";
+import { HeartSettings } from "./chat/heart-settings.js";
 import type { Config } from "./config.js";
 import { AppLogRepository } from "./db/app-logs.js";
 import { ConnectionRepository } from "./db/connection.js";
@@ -6,8 +10,11 @@ import type { Database } from "./db/database.js";
 import { LinkRepository } from "./db/link.js";
 import { migrate } from "./db/migrate.js";
 import { scheduleRetention } from "./db/retention.js";
+import { SettingsRepository } from "./db/settings.js";
 import { TokenCipher } from "./db/token-cipher.js";
 import { DiscordBot } from "./discord/bot.js";
+import { ChatRelay } from "./discord/chat-relay.js";
+import { HeartCommands } from "./discord/heart-commands.js";
 import { LinkCommands } from "./discord/link-commands.js";
 import { LiveCommands } from "./discord/live-commands.js";
 import { SpoonLink } from "./link/spoon-link.js";
@@ -103,13 +110,55 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     },
     onLog: record,
   });
+  // ---- チャットの送信（仕様書 §7） ----
+  const sender = new ChatSender(
+    {
+      send: async (message, signal) => {
+        const manager = link.tokens();
+        if (!manager) throw new TokenRevokedError("not linked");
+        await manager.withAccessToken((token) => api.sendChat(token, message, signal));
+      },
+      canSend: () => session.isJoined(),
+      onUnlinked: (error) => void link.handleError(error),
+    },
+    { onLog: record },
+  );
+  const heartSettings = new HeartSettings(new SettingsRepository(db));
+  const heartCommenter = new HeartCommenter({
+    enabled: () => heartSettings.enabled(),
+    send: (message) => sender.send(message),
+  });
+  const heartCommands = new HeartCommands({
+    settings: heartSettings,
+    isLinked: () => link.isLinked(),
+    notify: (message) => bot.notify(message),
+  });
+  const chatRelay = new ChatRelay({
+    isJoined: () => session.isJoined(),
+    send: (message) => sender.send(message),
+  });
+
   const session = new LiveSession(api, () => link.tokens(), {
-    onLeft: (reason, live) => liveCommands.onLeft(reason, live),
+    onEvent: async (event) => {
+      if (event.kind === "like") {
+        heartCommenter.handle(event);
+      } else if (event.kind === "chat" && event.isDj) {
+        // 推し本人の発言だけをコマンドとして読む（仕様書 §7.4）
+        const command = parseDjCommand(event.message);
+        if (command) await heartCommands.handleDjCommand(command);
+      }
+    },
+    onLeft: async (reason, live) => {
+      // 退室したら、送っていないチャットは捨てる
+      await sender.clear();
+      await liveCommands.onLeft(reason, live);
+    },
     onFatalError: (error) => link.handleError(error).then(() => {}),
     onLog: record,
   });
   link.addListener({
-    onLinked: () => {
+    onLinked: async () => {
+      await heartSettings.load(link.connectionId());
       watcher.start();
       // 参加中なら、新しいトークンで接続し直す
       if (session.isJoined()) session.reconnectNow();
@@ -117,10 +166,12 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     onUnlinking: async () => {
       await session.leave("unlinked");
       await watcher.stop();
+      await heartSettings.load(null);
     },
   });
 
   await link.load();
+  await heartSettings.load(link.connectionId());
 
   const linkCommands = new LinkCommands({ link, notify: (message) => bot.notify(message) });
   bot.onCommand("link", (interaction) => linkCommands.handleLink(interaction));
@@ -129,6 +180,14 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
   bot.onCommand("join", (interaction) => liveCommands.handleJoinCommand(interaction));
   bot.onCommand("leave", (interaction) => liveCommands.handleLeaveCommand(interaction));
   bot.onButton((interaction) => liveCommands.handleButton(interaction));
+  bot.onCommand("heart", (interaction) => {
+    const state = interaction.option?.("state");
+    return heartCommands.handleCommand(
+      interaction,
+      state === "on" || state === "off" ? state : null,
+    );
+  });
+  bot.onChatMessage((content) => chatRelay.handle(content));
   await bot.start();
   // 起動したときに配信中なら知らせる（Discord の準備ができてから。自動では参加しない）
   if (link.isLinked()) watcher.start();

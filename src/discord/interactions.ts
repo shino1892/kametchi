@@ -24,6 +24,8 @@ export interface ReplyOptions extends BotReply {
 
 export interface CommandInteractionLike {
   userId: string;
+  /** 文字列のオプション。指定されていなければ null */
+  option?(name: string): string | null;
   reply(reply: ReplyOptions): Promise<void>;
   /** 時間のかかる処理の前に応答しておく（あとで editReply で返信を書く。返信は全員に見える） */
   deferReply(): Promise<void>;
