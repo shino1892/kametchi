@@ -17,7 +17,7 @@
 | 項目 | 値 |
 | ---- | -- |
 | URL | https://kametchi.com（連携用ページ、`/privacy`、`/healthz` だけ） |
-| アプリサーバー | 192.168.0.111（Ubuntu 24.04 LXC、メモリ 512MB、スワップ 512MB）、root、鍵 `~/.ssh/kametti-server_ed25519` |
+| アプリサーバー | 192.168.0.111（Ubuntu 24.04 LXC、メモリ 1GB、スワップ 512MB）、root、鍵 `~/.ssh/kametti-server_ed25519` |
 | DB サーバー | 192.168.0.109（PostgreSQL 17、Lens と共用）、root、鍵 `~/.ssh/spoon-db-server_ed25519` |
 | 配置 | `/opt/kametti/releases/<コミット>`、`current` が使用中の版へのリンク |
 | 設定 | `/opt/kametti/shared/.env`（権限 600。各リリースからリンク） |
@@ -126,7 +126,7 @@ pm2 start kametti
 | Discord のコマンドが出ない | 起動時の登録の失敗（ログの `discord`）。`DISCORD_APP_ID`・`DISCORD_GUILD_ID` |
 | チャットチャンネルの投稿が送られない | Message Content Intent がオンか。ボットが配信に参加しているか（⚠️ の返信の理由） |
 | 「別の場所から接続されたため退室しました」 | 同じ連携で2つのプロセスが動いていないか（手元の `pnpm dev` を本番の連携で動かしていないか）。`pm2 ls` |
-| メモリによる再起動が続く | `pm2 ls` の再起動回数とメモリ。コンテナのメモリを 1GB に増やす（Proxmox の画面から） |
+| メモリによる再起動が続く | `pm2 ls` の再起動回数とメモリ（起動直後で約345MB）。`deploy/ecosystem.config.cjs` の `max_memory_restart` を見直す |
 | Spoon 側で連携が解除された | Discord に通知が出て、データは削除済み。`/link` で連携し直す |
 
 ## 8. 利用をやめるとき
