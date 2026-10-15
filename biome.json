@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/dist", "!**/coverage", "!**/*.md"]
+    "includes": ["**", "!**/dist", "!**/coverage", "!**/*.md", "!test/dajare/fixtures"]
   },
   "formatter": {
     "enabled": true,

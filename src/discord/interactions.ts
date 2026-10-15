@@ -26,6 +26,8 @@ export interface CommandInteractionLike {
   userId: string;
   /** 文字列のオプション。指定されていなければ null */
   option?(name: string): string | null;
+  /** サブコマンドの名前。なければ null */
+  subcommand?(): string | null;
   reply(reply: ReplyOptions): Promise<void>;
   /** 時間のかかる処理の前に応答しておく（あとで editReply で返信を書く。返信は全員に見える） */
   deferReply(): Promise<void>;
@@ -44,4 +46,17 @@ export interface ButtonInteractionLike {
   /** 時間のかかる処理の前に応答しておく（あとで editReply で新しい返信を書く。全員に見える） */
   deferReply(): Promise<void>;
   editReply(reply: BotReply): Promise<void>;
+}
+
+export interface Choice {
+  name: string;
+  value: string;
+}
+
+/** オプションの入力中に出す候補（オートコンプリート） */
+export interface AutocompleteInteractionLike {
+  subcommand: string | null;
+  /** 入力中のオプション */
+  focused: { name: string; value: string };
+  respond(choices: Choice[]): Promise<void>;
 }

@@ -3,6 +3,10 @@ import { parseDjCommand } from "./chat/dj-commands.js";
 import { HeartCommenter } from "./chat/heart-comment.js";
 import { HeartSettings } from "./chat/heart-settings.js";
 import type { Config } from "./config.js";
+import { DajarePoster } from "./dajare/poster.js";
+import { DajareJudge } from "./dajare/shareka.js";
+import { DajareTargets } from "./dajare/targets.js";
+import { DajareVoting } from "./dajare/voting.js";
 import { AppLogRepository } from "./db/app-logs.js";
 import { ConnectionRepository } from "./db/connection.js";
 import { DajarePostRepository, DajareTargetRepository } from "./db/dajare.js";
@@ -14,6 +18,8 @@ import { SettingsRepository } from "./db/settings.js";
 import { TokenCipher } from "./db/token-cipher.js";
 import { DiscordBot } from "./discord/bot.js";
 import { ChatRelay } from "./discord/chat-relay.js";
+import { DajareChannel } from "./discord/dajare-channel.js";
+import { DajareCommands } from "./discord/dajare-commands.js";
 import { HeartCommands } from "./discord/heart-commands.js";
 import { LinkCommands } from "./discord/link-commands.js";
 import { LiveCommands } from "./discord/live-commands.js";
@@ -41,6 +47,8 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
 
   const connections = new ConnectionRepository(db, new TokenCipher(config.tokenEncryptionKey));
   const logs = new AppLogRepository(db);
+  const dajareTargetRepository = new DajareTargetRepository(db);
+  const dajarePosts = new DajarePostRepository(db);
   const oauth = new SpoonOAuthClient(config.spoon);
   const api = new SpoonApi(
     new SpoonHttp({
@@ -76,8 +84,8 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
   const link = new SpoonLink({
     connections,
     link: new LinkRepository(db),
-    dajareTargets: new DajareTargetRepository(db),
-    dajarePosts: new DajarePostRepository(db),
+    dajareTargets: dajareTargetRepository,
+    dajarePosts,
     logs,
     oauth,
     baseUrl: config.baseUrl,
@@ -138,19 +146,51 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     send: (message) => sender.send(message),
   });
 
+  // ---- ダジャレ（仕様書 §8） ----
+  const judge = new DajareJudge();
+  await judge.init().catch((error: unknown) => onError(error, "failed to load dajare dictionary"));
+  const dajareTargets = new DajareTargets(dajareTargetRepository);
+  const voting = new DajareVoting({
+    posts: dajarePosts,
+    threshold: config.voteThreshold,
+    onLog: record,
+  });
+  const dajareChannel = new DajareChannel(
+    bot.client,
+    config.discord.dajareChannelId,
+    voting,
+    onError,
+  );
+  const poster = new DajarePoster({
+    judge,
+    targets: dajareTargets,
+    posts: dajarePosts,
+    connectionId: () => link.connectionId(),
+    post: (nickname, text) => dajareChannel.post(nickname, text),
+    deleteMessage: (channelId, messageId) => bot.deleteMessage(channelId, messageId),
+    onLog: record,
+  });
+  const dajareCommands = new DajareCommands({
+    targets: dajareTargets,
+    isLinked: () => link.isLinked(),
+  });
+
   const session = new LiveSession(api, () => link.tokens(), {
     onEvent: async (event) => {
       if (event.kind === "like") {
         heartCommenter.handle(event);
-      } else if (event.kind === "chat" && event.isDj) {
+      } else if (event.isDj) {
         // 推し本人の発言だけをコマンドとして読む（仕様書 §7.4）
         const command = parseDjCommand(event.message);
         if (command) await heartCommands.handleDjCommand(command);
+      } else {
+        await poster.handleChat(event);
       }
     },
     onLeft: async (reason, live) => {
-      // 退室したら、送っていないチャットは捨てる
+      // 退室したら、送っていないチャットと、最近チャットした人の一覧を捨てる
       await sender.clear();
+      dajareTargets.forgetChatters();
       await liveCommands.onLeft(reason, live);
     },
     onFatalError: (error) => link.handleError(error).then(() => {}),
@@ -159,6 +199,8 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
   link.addListener({
     onLinked: async () => {
       await heartSettings.load(link.connectionId());
+      await dajareTargets.load(link.connectionId());
+      await dajareTargets.load(link.connectionId());
       watcher.start();
       // 参加中なら、新しいトークンで接続し直す
       if (session.isJoined()) session.reconnectNow();
@@ -167,6 +209,7 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
       await session.leave("unlinked");
       await watcher.stop();
       await heartSettings.load(null);
+      await dajareTargets.load(null);
     },
   });
 
@@ -188,6 +231,10 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     );
   });
   bot.onChatMessage((content) => chatRelay.handle(content));
+  bot.onCommand("dajare-target", (interaction) => dajareCommands.handleCommand(interaction));
+  bot.onAutocomplete("dajare-target", (interaction) =>
+    dajareCommands.handleAutocomplete(interaction),
+  );
   await bot.start();
   // 起動したときに配信中なら知らせる（Discord の準備ができてから。自動では参加しない）
   if (link.isLinked()) watcher.start();

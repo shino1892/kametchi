@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  type AutocompleteInteraction,
   ButtonBuilder,
   type ButtonInteraction,
   ButtonStyle,
@@ -12,6 +13,7 @@ import {
   InteractionContextType,
   type Message,
   MessageFlags,
+  Partials,
   REST,
   RESTJSONErrorCodes,
   Routes,
@@ -19,6 +21,7 @@ import {
 } from "discord.js";
 import type { Config } from "../config.js";
 import type {
+  AutocompleteInteractionLike,
   BotReply,
   ButtonInteractionLike,
   ButtonSpec,
@@ -54,11 +57,48 @@ export const COMMANDS = [
         .setDescription("オンかオフ")
         .addChoices({ name: "オン", value: "on" }, { name: "オフ", value: "off" }),
     ),
+  new SlashCommandBuilder()
+    .setName("dajare-target")
+    .setDescription("ダジャレ判定の対象（本人の了承を得たリスナー）を管理する")
+    .setContexts(InteractionContextType.Guild)
+    .addSubcommand((sub) =>
+      sub
+        .setName("add")
+        .setDescription("参加中の配信で最近チャットした人から選んで追加する")
+        .addStringOption((option) =>
+          option
+            .setName("listener")
+            .setDescription("最近チャットした人")
+            .setRequired(true)
+            .setAutocomplete(true),
+        )
+        .addStringOption((option) =>
+          option
+            .setName("memo")
+            .setDescription("一覧に出す名前（Discord だけで使います）")
+            .setRequired(true)
+            .setMaxLength(50),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName("remove")
+        .setDescription("対象から外す")
+        .addStringOption((option) =>
+          option
+            .setName("target")
+            .setDescription("外す対象")
+            .setRequired(true)
+            .setAutocomplete(true),
+        ),
+    )
+    .addSubcommand((sub) => sub.setName("list").setDescription("登録している対象を表示する")),
 ];
 
 export type CommandHandler = (interaction: CommandInteractionLike) => Promise<void>;
 /** 自分のボタンなら処理して true を返す */
 export type ButtonHandler = (interaction: ButtonInteractionLike) => Promise<boolean>;
+export type AutocompleteHandler = (interaction: AutocompleteInteractionLike) => Promise<void>;
 /** チャットチャンネルへの投稿。付けるリアクションと、理由の返信を返す */
 export type ChatMessageHandler = (content: string) => Promise<{ reaction: string; reply?: string }>;
 
@@ -76,6 +116,7 @@ export class DiscordBot {
   readonly client: Client;
   private readonly commands = new Map<string, CommandHandler>();
   private readonly buttons: ButtonHandler[] = [];
+  private readonly autocompletes = new Map<string, AutocompleteHandler>();
   private chatHandler: ChatMessageHandler | null = null;
 
   constructor(private readonly options: DiscordBotOptions) {
@@ -85,7 +126,11 @@ export class DiscordBot {
         // チャットチャンネルへの投稿を配信のチャットに送るため（仕様書 §7.2）
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        // ダジャレの投票（仕様書 §8.3）
+        GatewayIntentBits.GuildMessageReactions,
       ],
+      // 再起動前の投稿へのリアクション・削除も受け取るため
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.User],
     });
     this.client.on(Events.InteractionCreate, (interaction) => void this.dispatch(interaction));
     this.client.on(Events.MessageCreate, (message) => void this.relay(message));
@@ -98,6 +143,10 @@ export class DiscordBot {
 
   onButton(handler: ButtonHandler): void {
     this.buttons.push(handler);
+  }
+
+  onAutocomplete(commandName: string, handler: AutocompleteHandler): void {
+    this.autocompletes.set(commandName, handler);
   }
 
   /** DISCORD_CHAT_CHANNEL_ID のチャンネルへの、人の投稿を受け取る */
@@ -183,6 +232,13 @@ export class DiscordBot {
   private async dispatch(interaction: Interaction): Promise<void> {
     // 決めたサーバーの中の操作だけを受け付ける
     if (interaction.guildId !== this.options.discord.guildId) return;
+    if (interaction.isAutocomplete()) {
+      const handler = this.autocompletes.get(interaction.commandName);
+      await handler?.(wrapAutocomplete(interaction)).catch((error: unknown) => {
+        this.options.onError?.(error, "discord autocomplete failed");
+      });
+      return;
+    }
     try {
       if (interaction.isChatInputCommand()) {
         const handler = this.commands.get(interaction.commandName);
@@ -214,6 +270,7 @@ function wrapCommand(interaction: ChatInputCommandInteraction): CommandInteracti
   return {
     userId: interaction.user.id,
     option: (name) => interaction.options.getString(name),
+    subcommand: () => interaction.options.getSubcommand(false),
     reply: async (reply) => {
       await interaction.reply(toReplyPayload(reply));
     },
@@ -222,6 +279,17 @@ function wrapCommand(interaction: ChatInputCommandInteraction): CommandInteracti
     },
     editReply: async (reply) => {
       await interaction.editReply(toPayload(reply));
+    },
+  };
+}
+
+function wrapAutocomplete(interaction: AutocompleteInteraction): AutocompleteInteractionLike {
+  const focused = interaction.options.getFocused(true);
+  return {
+    subcommand: interaction.options.getSubcommand(false),
+    focused: { name: focused.name, value: String(focused.value) },
+    respond: async (choices) => {
+      await interaction.respond(choices);
     },
   };
 }
