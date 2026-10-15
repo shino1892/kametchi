@@ -1,105 +1,65 @@
 # kametti
 
-Spoon の特定DJ配信を監視し、配信検知を Discord に通知しつつ、Discord のスラッシュコマンドでライブ参加してコメントを取得します。
-（コメントの一部は簡易的なダジャレ判定を挟んで Discord に転送します）
+推しの Spoon 配信を手伝う Discord ボットです。**Spoon Developers 公式 API** だけを使います（旧版の非公式ライブラリ `@sopia-bot/core` は使いません）。
 
-## 前提
+- 仕様書: [docs/spec.md](docs/spec.md)
+- Spoon Developers への申請内容: [docs/app-purpose.md](docs/app-purpose.md)
+- 公式ドキュメント: https://developers.spooncast.net/docs/ja/
+- 利用規約: https://spoonvip.oopy.io/static/terms/jp/developerterms
 
-- Node.js（推奨: LTS）
-- pnpm
-- `@sopia-bot/core` をリポジトリ内の `sopia-core` として同梱しています（`package.json` の `file:./sopia-core`）
-  - `@sopia-bot/core` は `dist/` を公開物として使うため、初回セットアップ時に `sopia-core` のビルドが必要です（後述）
+## 機能（予定）
 
-## セットアップ
+| 機能 | 内容 |
+| ---- | ---- |
+| Spoon 連携 | Discord の `/link` で発行した URL から、推しが Spoon の同意画面で許可する |
+| 配信の通知 | 推しの配信が始まったら Discord に「配信に参加」ボタン付きで通知する |
+| 参加・退室 | `/join`・`/leave`（ボタン）で、ボットが配信に入る・抜ける。自動では参加しない |
+| コメント送信 | Discord のチャットチャンネルへの投稿を、ボット名で配信チャットに送る |
+| ハートコメント | 無料ハート・有料ハート1個に、決まった文面を送る。`!ハート on/off`・`/heart` で切り替え |
+| ダジャレ判定 | 登録したリスナーのダジャレ候補を Discord に投稿し、⭕/❌ で投票する |
 
-```bash
+現在は段階0（土台）です。段階は仕様書 §12 を参照してください。
+
+## 使う公式 API
+
+`GET /v1/live`、`GET /v1/live/events`、`POST /v1/live/chat`、`POST /v1/oauth/token`、`POST /v1/oauth/revoke` だけです。権限は `live.read`、`events.chat`、`events.like`、`chat.send` の4つです。ほかの API は HTTP クライアント（`src/spoon/http.ts` の `ALLOWED_ENDPOINTS`）が送信前に拒否します。
+
+## 開発
+
+必要なもの: Node.js 22.6以上、pnpm 10
+
+```sh
 pnpm install
+cp .env.example .env   # 値を設定する。.env はコミットしない
+pnpm mock              # Spoon API のモックサーバー（http://localhost:8788）
 ```
 
-`@sopia-bot/core`（`sopia-core`）のビルド（初回/更新時）:
+運用承認の前は、開発・テストをモックで行います（実際の配信には接続しません）。
 
-```bash
-pnpm -C sopia-core install
-pnpm -C sopia-core build
-```
+| コマンド | 内容 |
+| -------- | ---- |
+| `pnpm mock` | Spoon API のモックサーバーを起動 |
+| `pnpm test` | テストを実行（Vitest） |
+| `pnpm check` | 型チェック |
+| `pnpm lint` | Lint・フォーマットの確認（Biome） |
+| `pnpm format` | フォーマットを適用 |
+| `pnpm build` | `dist/` にビルド |
 
-プロジェクトルートに `.env` を作成して環境変数を設定してください（後述）。
+### モックの操作
 
-## 環境変数
+`/__mock` 以下のエンドポイントで、配信やイベントを起こせます。
 
-最低限必要なもの（監視＋Discord bot運用）:
+| エンドポイント | 本文の例 | 内容 |
+| -------------- | -------- | ---- |
+| `POST /__mock/start-live` | `{"title":"テスト配信"}` | 配信を始める |
+| `POST /__mock/end-live` | なし | 配信を終える（`LIVE_ENDED`） |
+| `POST /__mock/chat` | `{"id":"l1","nickname":"リスナー1","message":"こんにちは","isDj":false}` | チャットを送る |
+| `POST /__mock/like` | `{"id":"l1","type":"FREE"}`、`{"id":"l1","type":"PAID","totalAmount":10}` | ハートを送る |
+| `POST /__mock/blocked` | `{"value":true}` | DJ がボットをブロックする |
+| `POST /__mock/chat-frozen` | `{"value":true}` | チャットを凍結する |
+| `POST /__mock/end-streams` | `{"reason":"TOKEN_EXPIRED"}` | 接続を指定の理由で終える |
+| `POST /__mock/drop-streams` | なし | 通信断を再現する |
+| `POST /__mock/revoke` | なし | DJ が連携を解除した状態にする |
+| `GET /__mock/state` | — | 配信・接続・送信したチャットの数 |
 
-```dotenv
-# Spoon
-ACCESS_TOKEN=...
-REFRESH_TOKEN=...
-DJ_ID=12345678
-
-# Discord
-DISCORD_BOT_TOKEN=...
-DISCORD_APP_ID=...
-DISCORD_GUILD_ID=...
-DISCORD_CHANNEL_ID=...
-
-# ダジャレ検知対象ユーザーID（任意）
-SHIERU=...
-```
-
-任意（挙動調整・デバッグ）:
-
-- `CHECK_INTERVAL` : 監視間隔(ms)。未設定時 `5000`
-- `DIAG_DETECT` : `1` で検知ルートの診断ログを出力
-- `SOPIA_HTTP_DEBUG` : `1` で HTTP の debug ログを有効化（未設定/`1`以外は抑制）
-- `TOKEN_REFRESH_BACKOFF_MS` : トークン失効時(460)のバックオフ(ms)。未設定時 `300000`
-- `SPOON_HTTP_ANOMALY_BACKOFF_MS` : HTML応答など異常時のバックオフ(ms)。未設定時 `600000`
-
-## 使い方
-
-### 1) Discord Bot として起動（推奨）
-
-`src/discord/bot.ts` を起動します。Bot が起動するとギルド内に `/join` と `/leave` が登録され、配信検知の通知が `DISCORD_CHANNEL_ID` に送られます。
-
-```bash
-pnpm tsx src/discord/bot.ts
-```
-
-- `/join` : 直近に検知した LiveId に参加してコメント受信を開始
-- `/join url:<配信URLまたはLiveID>` : URL（またはLiveID）を直接指定して参加
-- `/leave` : 退室
-
-### 2) 監視だけをローカルで起動（コンソール通知）
-
-Discord を介さず、検知ログをコンソールに出します。
-
-```bash
-pnpm dev
-```
-
-## 開発用スクリプト
-
-- 型チェック:
-
-```bash
-pnpm check
-```
-
-- ユーザー情報確認（トークン不要）:
-
-```bash
-pnpm tsx src/scripts/check-user.ts <ユーザーID>
-```
-
-- フォロー中一覧（トークン必要）:
-
-```bash
-pnpm tsx src/scripts/list-followings.ts
-```
-
-## よくある問題
-
-- `pnpm install` で `@sopia-bot/core` が見つからない
-  - `package.json` が `file:./sopia-core` を参照しているため、`sopia-core/` が存在するか確認してください。
-- `Cannot find module '@sopia-bot/core'` / `dist/index.cjs` が無い等で起動できない
-  - `sopia-core` のビルドが未実施の可能性があります: `pnpm -C sopia-core install && pnpm -C sopia-core build`
-- `/join` が「配信がない / Spoonクライアントが準備できていない」
-  - 配信検知（`DJ_ID`）とトークン（`ACCESS_TOKEN`/`REFRESH_TOKEN`）の設定を確認してください。
+同意画面（`/jp/oauth/authorize`）は省略され、すぐに `code` 付きでリダイレクトされます。`mock_deny=1` を付けると、同意しなかった場合（`error=access_denied`）を再現できます。Windows の curl で日本語を送ると文字化けするため、日本語を含む本文はファイルに保存して `--data-binary @body.json` で送ってください。

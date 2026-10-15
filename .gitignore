@@ -1,4 +1,9 @@
 node_modules/
-.env
 dist/
+coverage/
 *.log
+
+# 秘密情報（Client Secret、トークン、鍵、Discord ボットのトークン）はコミットしない
+.env
+.env.*
+!.env.example
