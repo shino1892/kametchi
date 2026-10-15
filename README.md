@@ -18,7 +18,7 @@
 | ハートコメント | 無料ハート・有料ハート1個に、決まった文面を送る。`!ハート on/off`・`/heart` で切り替え |
 | ダジャレ判定 | 登録したリスナーのダジャレ候補を Discord に投稿し、⭕/❌ で投票する |
 
-現在は段階1（設定と DB）です。段階は仕様書 §12 を参照してください。
+現在は段階2（Spoon 連携）です。段階は仕様書 §12 を参照してください。
 
 ## 使う公式 API
 
@@ -38,6 +38,7 @@ pnpm mock              # Spoon API のモックサーバー（http://localhost:8
 
 | コマンド | 内容 |
 | -------- | ---- |
+| `pnpm dev` | ボットと連携用ページを起動（ファイル変更で再起動。`.env` のすべての値が必要） |
 | `pnpm mock` | Spoon API のモックサーバーを起動 |
 | `pnpm test` | テストを実行（Vitest、DB は PGlite） |
 | `pnpm test:pg` | 本物の PostgreSQL でテストを実行（`TEST_DATABASE_URL`。テストごとにスキーマを作って削除する） |
@@ -46,6 +47,7 @@ pnpm mock              # Spoon API のモックサーバー（http://localhost:8
 | `pnpm lint` | Lint・フォーマットの確認（Biome） |
 | `pnpm format` | フォーマットを適用 |
 | `pnpm build` | `dist/` にビルド |
+| `pnpm start` | ビルドしたものを起動 |
 
 ### モックの操作
 
