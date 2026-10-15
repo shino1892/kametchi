@@ -121,3 +121,17 @@ describe("LiveWatcher", () => {
     expect(watcher.current()).toBeNull();
   });
 });
+
+describe("LiveWatcher の記録", () => {
+  it("確認を始めたことと、配信していないことを、状態が変わったときだけ記録する", async () => {
+    const t = await setup();
+    await t.watcher.check();
+    await t.watcher.check();
+    t.mock.startLive();
+    await t.watcher.check();
+    t.mock.endLive();
+    await t.watcher.check();
+    await t.watcher.check();
+    expect(t.logs).toEqual(["not_live", "live_detected", "live_ended", "not_live"]);
+  });
+});

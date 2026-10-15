@@ -32,6 +32,8 @@ export class LiveWatcher {
   private loop: Promise<void> | null = null;
   /** 状態が変わったときだけ記録する */
   private lastError: string | null = null;
+  /** 「配信していない」を記録したか（状態が変わったときだけ記録する） */
+  private notLiveLogged = false;
   private readonly intervalMs: number;
   private readonly clock: Clock;
 
@@ -53,6 +55,8 @@ export class LiveWatcher {
   /** 定期確認を始める（すでに動いていれば何もしない） */
   start(): void {
     if (this.loop) return;
+    this.notLiveLogged = false;
+    this.hooks.onLog?.("watch_started", { intervalSeconds: this.intervalMs / 1000 });
     const controller = new AbortController();
     this.controller = controller;
     this.loop = this.run(controller.signal).finally(() => {
@@ -78,6 +82,7 @@ export class LiveWatcher {
     try {
       const live = await manager.withAccessToken((token) => this.api.getLive(token, signal));
       this.lastError = null;
+      this.notLiveLogged = false;
       if (this.live && this.live.liveId !== live.liveId) await this.ended();
       if (!this.live) {
         this.live = live;
@@ -89,6 +94,8 @@ export class LiveWatcher {
       if (error instanceof SpoonApiError && error.isNotLive) {
         this.lastError = null;
         if (this.live) await this.ended();
+        if (!this.notLiveLogged) this.hooks.onLog?.("not_live");
+        this.notLiveLogged = true;
       } else if (this.hooks.onFatalError(error)) {
         throw error;
       } else {
