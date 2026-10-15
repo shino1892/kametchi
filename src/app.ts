@@ -243,7 +243,6 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     link,
     baseUrl: config.baseUrl,
     secureCookies: config.secureCookies,
-    spoonAuthorizeUrl: config.spoon.authorizeUrl,
     spoonRedirectUri: config.spoon.redirectUri,
     privacy: config.privacy,
     healthCheck: async () => {

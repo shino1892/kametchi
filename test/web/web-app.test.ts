@@ -13,7 +13,6 @@ beforeEach(async () => {
     link: t.link,
     baseUrl: APP_BASE_URL,
     secureCookies: false,
-    spoonAuthorizeUrl: `${BASE_URL}/jp/oauth/authorize`,
     spoonRedirectUri: REDIRECT_URI,
     privacy: { x: "@example" },
     healthCheck: async () => {},
@@ -27,6 +26,18 @@ const post = (path: string, headers: Record<string, string> = { Origin: APP_BASE
 
 async function newInvitePath(): Promise<string> {
   return new URL((await t.link.createInvite()).url).pathname;
+}
+
+/** 移動用のページから、Spoon の同意画面の URL を取り出す（リンクとメタリフレッシュが同じ URL か確かめる） */
+async function authorizeUrlOf(response: Response): Promise<string> {
+  const body = await response.text();
+  const decode = (value: string) => value.replaceAll("&amp;", "&");
+  const href = decode(body.match(/<a class="button" href="([^"]+)"/)?.[1] ?? "");
+  const refresh = decode(
+    body.match(/<meta http-equiv="refresh" content="0;url=([^"]+)"/)?.[1] ?? "",
+  );
+  expect(refresh).toBe(href);
+  return href;
 }
 
 /** Set-Cookie から Cookie ヘッダーの値を作る */
@@ -52,11 +63,13 @@ describe("連携用ページ", () => {
     expect((await request("/link/abc")).status).toBe(410);
   });
 
-  it("ボタンを押すと Cookie を付けて Spoon の同意画面へ送り、招待を使用済みにする", async () => {
+  it("ボタンを押すと Cookie を付け、Spoon の同意画面へ移るページを返し、招待を使用済みにする", async () => {
     const path = await newInvitePath();
     const response = await post(path);
-    expect(response.status).toBe(303);
-    const location = new URL(response.headers.get("location") ?? "");
+    // フォームの応答から別のサイトへリダイレクトすると、ブラウザが CSP の form-action で止めるため
+    expect(response.status).toBe(200);
+    expect(response.headers.get("location")).toBeNull();
+    const location = new URL(await authorizeUrlOf(response.clone()));
     expect(`${location.origin}${location.pathname}`).toBe(`${BASE_URL}/jp/oauth/authorize`);
     expect(location.searchParams.get("scope")).toBe(REQUIRED_SCOPES.join(" "));
     expect(location.searchParams.get("redirect_uri")).toBe(REDIRECT_URI);
@@ -79,7 +92,7 @@ describe("連携用ページ", () => {
 
   it("同意からコールバックまで通すと連携し、Cookie を消す", async () => {
     const start = await post(await newInvitePath());
-    const callback = await t.consent(start.headers.get("location") ?? "");
+    const callback = await t.consent(await authorizeUrlOf(start.clone()));
     const query = new URLSearchParams({ code: callback.code ?? "", state: callback.state ?? "" });
 
     const response = await request(`/callback?${query}`, {
@@ -93,7 +106,7 @@ describe("連携用ページ", () => {
 
   it("Cookie のないブラウザで戻ってきたら連携しない", async () => {
     const start = await post(await newInvitePath());
-    const callback = await t.consent(start.headers.get("location") ?? "");
+    const callback = await t.consent(await authorizeUrlOf(start.clone()));
     const query = new URLSearchParams({ code: callback.code ?? "", state: callback.state ?? "" });
     const response = await request(`/callback?${query}`);
     expect(response.status).toBe(400);
@@ -103,7 +116,7 @@ describe("連携用ページ", () => {
 
   it("同意しなかったときは、その旨を表示する", async () => {
     const start = await post(await newInvitePath());
-    const callback = await t.consent(start.headers.get("location") ?? "", { mock_deny: "1" });
+    const callback = await t.consent(await authorizeUrlOf(start.clone()), { mock_deny: "1" });
     const query = new URLSearchParams({ error: callback.error ?? "", state: callback.state ?? "" });
     const response = await request(`/callback?${query}`, {
       headers: { Cookie: cookieOf(start) },
@@ -136,7 +149,8 @@ describe("そのほかのページとヘッダー", () => {
     const csp = response.headers.get("content-security-policy") ?? "";
     expect(csp).toContain("default-src 'self'");
     expect(csp).toContain("frame-ancestors 'none'");
-    expect(csp).toContain(`form-action 'self' ${BASE_URL}`);
+    // フォームは自分のサイトにだけ送る（別のサイトを許可しない）
+    expect(csp).toContain("form-action 'self';");
     expect(response.headers.get("referrer-policy")).toBe("same-origin");
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
@@ -146,7 +160,6 @@ describe("そのほかのページとヘッダー", () => {
       link: t.link,
       baseUrl: "https://kametchi.com",
       secureCookies: true,
-      spoonAuthorizeUrl: `${BASE_URL}/jp/oauth/authorize`,
       spoonRedirectUri: "https://kametchi.com/callback",
       privacy: {},
     });

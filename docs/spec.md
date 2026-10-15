@@ -122,7 +122,7 @@ Google ログインは使わない。連携は推し1名だけで、Discord サ�
    → この時点では招待を使わない（Discord のリンクプレビューが GET しても消費されないようにする）
 3. 推しがページの「Spoonと連携する」を押す（POST）
    → 招待を「使用済み」にし、state を作って招待とブラウザの Cookie に結びつけ、
-     Spoon の同意画面へリダイレクトする
+     Spoon の同意画面へ移るページを返す（メタリフレッシュとリンク）
 4. 推しが Spoon の同意画面で許可する
    → https://kametchi.com/callback?code=...&state=... に戻る
 5. コールバックで state・Cookie・招待を照合し、60秒以内に code をトークンへ交換して暗号化して保存する
@@ -135,6 +135,7 @@ Google ログインは使わない。連携は推し1名だけで、Discord サ�
 | state | 32バイトの乱数。DB にはハッシュを保存し、招待と Cookie の両方に結びつける。10分で失効し、使用後に消す |
 | Cookie | `__Host-kametti_link`、`HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`、10分。開発中の http では `__Host-` と `Secure` を付けない |
 | POST の確認 | `Origin` が `APP_BASE_URL` と同じであること |
+| CSP の `form-action` | `'self'` だけ（Spoon のサイトを許可しない） |
 | ヘッダー | CSP（`default-src 'self'`、`frame-ancestors 'none'`）、`Referrer-Policy: same-origin`、`Cache-Control: no-store`（Lens と同じ。`no-referrer` は使わない） |
 
 - 連携できるのは1件だけ。連携済みのときに `/link` で連携し直した場合は、新しいトークンで置き換える（権限を足すときなどに使う）。設定・判定対象・投稿は引き継ぐ。参加中なら接続をやり直す
@@ -145,7 +146,7 @@ Google ログインは使わない。連携は推し1名だけで、Discord サ�
 | パス | 内容 |
 | ---- | ---- |
 | `GET /link/:token` | 連携の案内と「Spoonと連携する」ボタン。招待が無効なら「この URL は使えません。Discord で /link をやり直してください」 |
-| `POST /link/:token` | 招待を使用済みにし、Spoon の同意画面へリダイレクト |
+| `POST /link/:token` | 招待を使用済みにし、Spoon の同意画面へ移るページを返す。フォームの応答から直接リダイレクトすると、ブラウザが CSP の `form-action` を続くリダイレクトにも当て、同意画面から Spoon のログイン画面（`www.spooncast.net`）への移動を止めるため（2026-10-15 実機で確認） |
 | `GET /callback` | トークンの交換と保存。結果を表示する。`error` が返った場合（同意しなかったなど）はその旨を表示する |
 | `GET /privacy` | プライバシーポリシー（取得する情報、Discord での処理、保存期間、削除の窓口） |
 | `GET /healthz` | 死活監視用。`ok` だけを返す |

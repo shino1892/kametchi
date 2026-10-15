@@ -3,7 +3,13 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { secureHeaders } from "hono/secure-headers";
 import { type CompleteResult, LINK_TTL_MS, type SpoonLink } from "../link/spoon-link.js";
 import { type PrivacyContact, privacyPage } from "./privacy-view.js";
-import { invalidInvitePage, linkStartPage, messagePage, STYLESHEET } from "./views.js";
+import {
+  goToSpoonPage,
+  invalidInvitePage,
+  linkStartPage,
+  messagePage,
+  STYLESHEET,
+} from "./views.js";
 
 export interface WebAppDeps {
   link: Pick<SpoonLink, "isInviteUsable" | "startAuthorization" | "completeAuthorization">;
@@ -11,8 +17,6 @@ export interface WebAppDeps {
   baseUrl: string;
   /** https なら Cookie に Secure と __Host- を付ける */
   secureCookies: boolean;
-  /** Spoon の同意画面の URL。フォーム送信後にここへリダイレクトするため CSP で許可する */
-  spoonAuthorizeUrl: string;
   /** Spoon の Redirect URI（登録した値）。このパスでコールバックを受ける */
   spoonRedirectUri: string;
   privacy: PrivacyContact;
@@ -40,8 +44,10 @@ export function createWebApp(deps: WebAppDeps): Hono {
     secureHeaders({
       contentSecurityPolicy: {
         defaultSrc: ["'self'"],
-        // フォーム送信後の Spoon の同意画面へのリダイレクトも form-action の対象になる
-        formAction: ["'self'", new URL(deps.spoonAuthorizeUrl).origin],
+        // フォームは自分のサイトにだけ送る。ブラウザはフォーム送信に続くリダイレクトにも
+        // form-action を当てるため、Spoon の同意画面へはフォームの応答からリダイレクトしない
+        // （同意画面は未ログインだと www.spooncast.net のログイン画面へさらに移る）
+        formAction: ["'self'"],
         frameAncestors: ["'none'"],
         baseUri: ["'none'"],
         objectSrc: ["'none'"],
@@ -100,7 +106,8 @@ export function createWebApp(deps: WebAppDeps): Hono {
       path: "/",
       maxAge: LINK_TTL_MS / 1000,
     });
-    return c.redirect(started.authorizeUrl, 303);
+    // フォーム送信とは別の移動にするため、リダイレクトではなく移動用のページを返す
+    return c.html(goToSpoonPage(started.authorizeUrl));
   });
 
   app.get(callbackPath, async (c) => {
