@@ -95,7 +95,7 @@ describe("LiveSession 参加・退室", () => {
     expect(await t.session.leave()).toBe(false);
   });
 
-  it("推しがブロックしていれば参加できない", async () => {
+  it("配信者がブロックしていれば参加できない", async () => {
     const t = await setup();
     t.mock.startLive();
     t.mock.setBlocked("dj-1", true);

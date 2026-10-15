@@ -63,7 +63,7 @@ describe("ChatRelay（Discord → 配信のチャット）", () => {
   });
 });
 
-describe("HeartCommands（/heart と推しのチャットコマンド）", () => {
+describe("HeartCommands（/heart と配信者のチャットコマンド）", () => {
   function setup(options: { linked?: boolean } = {}) {
     let enabled = true;
     const notifications: BotReply[] = [];
@@ -117,12 +117,12 @@ describe("HeartCommands（/heart と推しのチャットコマンド）", () =>
     expect(c.replies[0]?.content).toContain("/link");
   });
 
-  it("推しのチャットコマンドで変えたら、Discord にだけ知らせる", async () => {
+  it("配信者のチャットコマンドで変えたら、Discord にだけ知らせる", async () => {
     const t = setup();
     await t.commands.handleDjCommand({ type: "heart", enabled: false });
     expect(t.enabled()).toBe(false);
     expect(t.notifications.map((n) => n.content)).toEqual([
-      "💗 推しが配信のチャットでハートコメントをオフにしました。",
+      "💗 配信者がチャットでハートコメントをオフにしました。",
     ]);
   });
 });

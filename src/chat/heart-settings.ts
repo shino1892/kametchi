@@ -1,7 +1,7 @@
 import { DEFAULT_SETTINGS, type SettingsRepository } from "../db/settings.js";
 
 /**
- * ハートコメントのオン・オフ（仕様書 §7.4）。推しのチャットコマンドと Discord の /heart から
+ * ハートコメントのオン・オフ（仕様書 §7.4）。配信者のチャットコマンドと Discord の /heart から
  * 同じ設定を変える。ハートのたびに DB を読まないよう、連携中の値をメモリに持つ。
  */
 export class HeartSettings {

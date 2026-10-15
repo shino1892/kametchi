@@ -63,10 +63,10 @@ describe("DajarePoster", () => {
     expect(t.noted).toEqual(["other", "target"]);
   });
 
-  it("推し本人の発言は判定せず、チャットした人の一覧にも入れない", async () => {
+  it("配信者本人の発言は判定せず、チャットした人の一覧にも入れない", async () => {
     const t = setup();
     expect(
-      await t.poster.handleChat(chat({ id: "target", nickname: "推し" }, "ダジャレ", true)),
+      await t.poster.handleChat(chat({ id: "target", nickname: "配信者" }, "ダジャレ", true)),
     ).toBe(false);
     expect(t.noted).toEqual([]);
   });

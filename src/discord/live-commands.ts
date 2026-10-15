@@ -11,7 +11,7 @@ import type {
 const JOIN_PREFIX = "live:join:";
 const LEAVE_ID = "live:leave";
 
-const NOT_LINKED = "Spoon と連携していません。/link で推しに連携してもらってください。";
+const NOT_LINKED = "Spoon と連携していません。/link で配信者に連携してもらってください。";
 
 export interface LiveCommandsDeps {
   session: Pick<LiveSession, "join" | "leave" | "isJoined" | "current">;
@@ -36,7 +36,7 @@ export class LiveCommands {
   async onLiveStarted(live: LiveInfo): Promise<void> {
     await this.deps.notify({
       content: [
-        "🎙️ **推しの配信が始まりました**",
+        "🎙️ **配信が始まりました**",
         live.title ? `タイトル: ${live.title}` : null,
         "ボットを参加させるときは、下のボタンか /join を使ってください。",
       ]
@@ -130,8 +130,8 @@ export class LiveCommands {
     this.endNotified = liveId;
     await this.deps.notify({
       content: botLeft
-        ? "📴 推しの配信が終了しました。ボットも退室しました。"
-        : "📴 推しの配信が終了しました。",
+        ? "📴 配信が終了しました。ボットも退室しました。"
+        : "📴 配信が終了しました。",
     });
   }
 }
@@ -142,7 +142,7 @@ function joinReply(result: JoinResult): BotReply {
     case "already_joined":
       return {
         content: [
-          "✅ 推しの配信に参加しました。",
+          "✅ 配信に参加しました。",
           result.live?.title ? `タイトル: ${result.live.title}` : null,
           "ボットが参加したことは、Spoon が配信のチャットで自動的にお知らせします。",
         ]
@@ -153,7 +153,7 @@ function joinReply(result: JoinResult): BotReply {
     case "not_linked":
       return { content: NOT_LINKED };
     case "not_live":
-      return { content: "推しは今、配信していません。" };
+      return { content: "今は配信していません。" };
     case "failed":
       return { content: failedMessage(result.reason) };
   }
@@ -164,7 +164,7 @@ function failedMessage(reason: LeaveReason): string {
     case "manual":
       return "参加を取りやめました。";
     case "live_ended":
-      return "推しは今、配信していません。";
+      return "今は配信していません。";
     case "unlinked":
       return "Spoon との連携が解除されていたため、参加できませんでした。";
     default:
@@ -175,9 +175,9 @@ function failedMessage(reason: LeaveReason): string {
 function leftMessage(reason: Exclude<LeaveReason, "manual" | "live_ended" | "unlinked">): string {
   switch (reason) {
     case "duplicate_connection":
-      return "⚠️ 別の場所から推しの配信に接続されたため、ボットは退室しました。kametti を重複して起動していないか確認してください。";
+      return "⚠️ 別の場所から配信に接続されたため、ボットは退室しました。kametti を重複して起動していないか確認してください。";
     case "blocked":
-      return "⚠️ 推しがボットの入室をブロックしているため、ボットは退室しました。";
+      return "⚠️ 配信者がボットの入室をブロックしているため、ボットは退室しました。";
     case "forbidden":
       return "⚠️ 権限が足りないため、ボットは退室しました。/link で連携し直して、すべての権限を許可してもらってください。";
   }

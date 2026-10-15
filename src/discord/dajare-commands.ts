@@ -30,7 +30,7 @@ export class DajareCommands {
     if (!this.deps.isLinked()) {
       await interaction.reply({
         ephemeral: true,
-        content: "Spoon と連携していません。/link で推しに連携してもらってください。",
+        content: "Spoon と連携していません。/link で配信者に連携してもらってください。",
       });
       return;
     }

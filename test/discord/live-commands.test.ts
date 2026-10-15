@@ -87,7 +87,7 @@ describe("配信の通知", () => {
   it("配信が始まったら、タイトルと「配信に参加」ボタンを付けて知らせる", async () => {
     const t = setup();
     await t.commands.onLiveStarted(live);
-    expect(t.notifications[0]?.content).toContain("推しの配信が始まりました");
+    expect(t.notifications[0]?.content).toContain("配信が始まりました");
     expect(t.notifications[0]?.content).toContain("夜の雑談");
     expect(t.notifications[0]?.buttons).toEqual([
       { customId: "live:join:10001", label: "配信に参加", style: "primary", emoji: "🎧" },
@@ -99,7 +99,7 @@ describe("配信の通知", () => {
     await t.commands.onLeft("live_ended", live);
     await t.commands.onLiveEnded(live);
     expect(t.notifications.map((n) => n.content)).toEqual([
-      "📴 推しの配信が終了しました。ボットも退室しました。",
+      "📴 配信が終了しました。ボットも退室しました。",
     ]);
   });
 
@@ -125,7 +125,7 @@ describe("/join と「配信に参加」ボタン", () => {
     const c = command();
     await t.commands.handleJoinCommand(c.interaction);
     expect(c.steps).toEqual(["defer", "edit"]);
-    expect(c.replies[0]?.content).toContain("推しの配信に参加しました");
+    expect(c.replies[0]?.content).toContain("配信に参加しました");
     expect(c.replies[0]?.buttons?.[0]).toMatchObject({ customId: "live:leave", label: "退室" });
   });
 
@@ -150,7 +150,7 @@ describe("/join と「配信に参加」ボタン", () => {
   });
 
   it.each([
-    [{ kind: "not_live" } as const, "推しは今、配信していません。"],
+    [{ kind: "not_live" } as const, "今は配信していません。"],
     [
       { kind: "failed", reason: "blocked" } as const,
       "ブロックしているため、ボットは参加できませんでした",

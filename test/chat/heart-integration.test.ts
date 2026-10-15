@@ -7,7 +7,7 @@ import { LiveSession } from "../../src/live/live-session.js";
 import { setupLinkedMock, until } from "../helpers/live-fixture.js";
 
 const alice = { id: "alice", nickname: "アリス" };
-const dj = { id: "dj", nickname: "推し" };
+const dj = { id: "dj", nickname: "配信者" };
 
 /** app.ts と同じつなぎ方（送信の間隔だけ短くする） */
 async function setup() {
@@ -72,7 +72,7 @@ describe("ハートコメント（モックの配信で通して確認）", () =
     await t.session.leave();
   });
 
-  it("推しが「!ハート off」と送ったら送らない。リスナーが送っても変わらない", async () => {
+  it("配信者が「!ハート off」と送ったら送らない。リスナーが送っても変わらない", async () => {
     const t = await setup();
     t.mock.startLive();
     await t.session.join();

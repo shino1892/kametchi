@@ -23,7 +23,7 @@ export interface LiveWatcherOptions {
 }
 
 /**
- * 推しの配信が始まった・終わったことを、GET /v1/live の定期確認で検知する（仕様書 §6.1）。
+ * 配信が始まった・終わったことを、GET /v1/live の定期確認で検知する（仕様書 §6.1）。
  * 確認だけではボットは入室しない（イベントストリームには接続しない）。
  */
 export class LiveWatcher {

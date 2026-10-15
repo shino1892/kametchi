@@ -180,7 +180,7 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
       if (event.kind === "like") {
         heartCommenter.handle(event);
       } else if (event.isDj) {
-        // 推し本人の発言だけをコマンドとして読む（仕様書 §7.4）
+        // 配信者本人の発言だけをコマンドとして読む（仕様書 §7.4）
         const command = parseDjCommand(event.message);
         if (command) await heartCommands.handleDjCommand(command);
       } else {

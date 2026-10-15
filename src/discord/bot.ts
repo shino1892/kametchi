@@ -33,7 +33,7 @@ import type {
 export const COMMANDS = [
   new SlashCommandBuilder()
     .setName("link")
-    .setDescription("推しに Spoon と連携してもらうための URL を発行する（10分間・1回だけ有効）")
+    .setDescription("配信者に Spoon と連携してもらうための URL を発行する（10分間・1回だけ有効）")
     .setContexts(InteractionContextType.Guild),
   new SlashCommandBuilder()
     .setName("unlink")
@@ -41,11 +41,11 @@ export const COMMANDS = [
     .setContexts(InteractionContextType.Guild),
   new SlashCommandBuilder()
     .setName("join")
-    .setDescription("推しの配信にボットを参加させる")
+    .setDescription("配信にボットを参加させる")
     .setContexts(InteractionContextType.Guild),
   new SlashCommandBuilder()
     .setName("leave")
-    .setDescription("ボットを推しの配信から退室させる")
+    .setDescription("ボットを配信から退室させる")
     .setContexts(InteractionContextType.Guild),
   new SlashCommandBuilder()
     .setName("heart")

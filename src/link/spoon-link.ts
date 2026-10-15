@@ -75,7 +75,7 @@ export interface LinkListener {
 }
 
 /**
- * Spoon連携（仕様書 §5）。Discord の /link で招待を作り、推しが開いたページから
+ * Spoon連携（仕様書 §5）。Discord の /link で招待を作り、配信者が開いたページから
  * Spoon の同意画面に送り、コールバックでトークンを保存する。/unlink や連携解除の検知で、
  * トークンを無効化してデータを削除する。連携中は TokenManager を1つ持つ。
  */
@@ -123,7 +123,7 @@ export class SpoonLink {
 
   // ---- 連携 ----
 
-  /** 10分間・1回限りの招待を作り、推しに開いてもらう URL を返す */
+  /** 10分間・1回限りの招待を作り、配信者に開いてもらう URL を返す */
   async createInvite(): Promise<{ url: string; expiresAt: Date }> {
     const token = randomToken();
     const expiresAt = new Date(this.clock.now() + LINK_TTL_MS);
@@ -214,7 +214,7 @@ export class SpoonLink {
     await this.notify(
       [
         relinked ? "🔗 Spoonと連携し直しました。" : "🔗 Spoonと連携しました。",
-        "推しの配信中に /join して、ボットが推しの配信に入れることを確かめてください。",
+        "配信中に /join して、ボットが配信に入れることを確かめてください。",
         ...missingScopeLines(missingScopes),
       ].join("\n"),
     );
@@ -290,7 +290,7 @@ export class SpoonLink {
         ? ["🔌 Spoon連携を解除しました。トークンを無効にし、データを削除しました。"]
         : [
             "🔌 Spoon 側で連携が解除されていたため、データを削除しました。",
-            "もう一度使うには、/link で推しに連携してもらってください。",
+            "もう一度使うには、/link で配信者に連携してもらってください。",
           ];
     lines.push(`削除したダジャレの投稿: ${deletedPosts}件`);
     if (failedPosts > 0) {
@@ -331,7 +331,7 @@ export class SpoonLink {
         onScopesReduced: (removed) => {
           void this.log("scopes_reduced", { removed });
           void this.notify(
-            ["⚠️ 推しが Spoon で権限を減らしました。", ...missingScopeLines(removed)].join("\n"),
+            ["⚠️ 配信者が Spoon で権限を減らしました。", ...missingScopeLines(removed)].join("\n"),
           );
         },
       },

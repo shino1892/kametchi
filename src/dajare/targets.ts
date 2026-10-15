@@ -53,7 +53,7 @@ export class DajareTargets {
     return true;
   }
 
-  /** チャットした人を覚える（推し本人の発言は含めない） */
+  /** チャットした人を覚える（配信者本人の発言は含めない） */
   noteChatter(user: Listener): void {
     this.recent.delete(user.id);
     this.recent.set(user.id, user.nickname);

@@ -12,8 +12,8 @@ export interface HeartCommandsDeps {
 const onOff = (enabled: boolean) => (enabled ? "オン" : "オフ");
 
 /**
- * ハートコメントのオン・オフ（仕様書 §7.4）。Discord の /heart と、推しのチャットコマンド。
- * 推しのチャットコマンドの結果は Discord にだけ知らせ、配信のチャットには投稿しない。
+ * ハートコメントのオン・オフ（仕様書 §7.4）。Discord の /heart と、配信者のチャットコマンド。
+ * 配信者のチャットコマンドの結果は Discord にだけ知らせ、配信のチャットには投稿しない。
  */
 export class HeartCommands {
   constructor(private readonly deps: HeartCommandsDeps) {}
@@ -26,7 +26,7 @@ export class HeartCommands {
     if (!this.deps.isLinked()) {
       await interaction.reply({
         ephemeral: true,
-        content: "Spoon と連携していません。/link で推しに連携してもらってください。",
+        content: "Spoon と連携していません。/link で配信者に連携してもらってください。",
       });
       return;
     }
@@ -44,11 +44,11 @@ export class HeartCommands {
     });
   }
 
-  /** 推しのチャットコマンド */
+  /** 配信者のチャットコマンド */
   async handleDjCommand(command: DjCommand): Promise<void> {
     if (!(await this.deps.settings.set(command.enabled))) return;
     await this.deps.notify({
-      content: `💗 推しが配信のチャットでハートコメントを${onOff(command.enabled)}にしました。`,
+      content: `💗 配信者がチャットでハートコメントを${onOff(command.enabled)}にしました。`,
     });
   }
 }
