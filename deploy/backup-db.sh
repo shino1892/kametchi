@@ -5,6 +5,9 @@
 # 保持は7日分に限る（連携解除時の削除が、バックアップに長く残らないように）。
 set -euo pipefail
 
+# cron の PATH には /usr/sbin が入っておらず、runuser が見つからずに失敗していた（2026-10-16〜17）
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 DB=kametti
 DIR=/var/backups/kametti
 KEEP_DAYS=7
