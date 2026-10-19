@@ -8,8 +8,8 @@ set -euo pipefail
 # cron の PATH には /usr/sbin が入っておらず、runuser が見つからずに失敗していた（2026-10-16〜17）
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-DB=kametti
-DIR=/var/backups/kametti
+DB=kametchi
+DIR=/var/backups/kametchi
 KEEP_DAYS=7
 
 mkdir -p "$DIR"

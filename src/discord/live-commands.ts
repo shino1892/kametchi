@@ -175,7 +175,7 @@ function failedMessage(reason: LeaveReason): string {
 function leftMessage(reason: Exclude<LeaveReason, "manual" | "live_ended" | "unlinked">): string {
   switch (reason) {
     case "duplicate_connection":
-      return "⚠️ 別の場所から配信に接続されたため、ボットは退室しました。kametti を重複して起動していないか確認してください。";
+      return "⚠️ 別の場所から配信に接続されたため、ボットは退室しました。kametchi を重複して起動していないか確認してください。";
     case "blocked":
       return "⚠️ 配信者がボットの入室をブロックしているため、ボットは退室しました。";
     case "forbidden":

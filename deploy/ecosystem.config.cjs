@@ -1,11 +1,11 @@
-// pm2 の設定（本番サーバー）。deploy/deploy.sh が /opt/kametti/current から起動する
+// pm2 の設定（本番サーバー）。deploy/deploy.sh が /opt/kametchi/current から起動する
 module.exports = {
   apps: [
     {
-      name: "kametti",
-      cwd: "/opt/kametti/current",
+      name: "kametchi",
+      cwd: "/opt/kametchi/current",
       script: "dist/index.js",
-      // .env は /opt/kametti/shared/.env へのリンク
+      // .env は /opt/kametchi/shared/.env へのリンク
       node_args: "--env-file=.env",
       exec_mode: "fork",
       instances: 1,

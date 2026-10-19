@@ -1,4 +1,4 @@
-# kametti 仕様書（Spoon Developers 公式 API 版）
+# kametchi 仕様書（Spoon Developers 公式 API 版）
 
 - 作成日: 2026-10-15
 - 状態: 第1版（実装前）
@@ -45,18 +45,18 @@
 
 ## 2. 構成
 
-1つのプロセス（pm2 `kametti`）で、次の3つを動かす。
+1つのプロセス（pm2 `kametchi`）で、次の3つを動かす。
 
 ```text
-[Discord] <-- discord.js --> [kametti]
+[Discord] <-- discord.js --> [kametchi]
                               - Discord ボット（スラッシュコマンド、ボタン、チャットチャンネル、投票）
                               - 配信の検知（30秒ごと）と、手動参加のイベントストリーム接続
                               - ウェブ（連携用のページとコールバック、プライバシーポリシー、healthz）
                                    |
-[推しのブラウザ] -- https://kametchi.com --> (Nginx Proxy Manager) --> kametti:8790
+[推しのブラウザ] -- https://kametchi.com --> (Nginx Proxy Manager) --> kametchi:8790
                                    |
                               [Spoon Developers API]  https://jp-openapi.spooncast.net
-                              [PostgreSQL 17]         192.168.0.109（専用のロール・DB kametti）
+                              [PostgreSQL 17]         192.168.0.109（専用のロール・DB kametchi）
 ```
 
 | 項目 | 内容 |
@@ -133,7 +133,7 @@ Google ログインは使わない。連携は推し1名だけで、Discord サ�
 | ---- | ---- |
 | 招待トークン | 32バイトの乱数（base64url）。DB には SHA-256 のハッシュだけを保存する。10分で失効し、1回だけ使える |
 | state | 32バイトの乱数。DB にはハッシュを保存し、招待と Cookie の両方に結びつける。10分で失効し、使用後に消す |
-| Cookie | `__Host-kametti_link`、`HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`、10分。開発中の http では `__Host-` と `Secure` を付けない |
+| Cookie | `__Host-kametchi_link`、`HttpOnly`、`Secure`、`SameSite=Lax`、`Path=/`、10分。開発中の http では `__Host-` と `Secure` を付けない |
 | POST の確認 | `Origin` が `APP_BASE_URL` と同じであること |
 | CSP の `form-action` | `'self'` だけ（Spoon のサイトを許可しない） |
 | ヘッダー | CSP（`default-src 'self'`、`frame-ancestors 'none'`）、`Referrer-Policy: same-origin`、`Cache-Control: no-store`（Lens と同じ。`no-referrer` は使わない） |
@@ -313,7 +313,7 @@ Lens からの変更: Discord からのコメントは、送った結果（送�
 - ダジャレ候補は `DISCORD_DAJARE_CHANNEL_ID` に Embed で投稿する（著者「{ニックネーム}のダジャレ候補」、タイトルに本文、状況「投票受付中」）。ボットが ⭕ と ❌ を付ける
 - DB には Discord のメッセージ ID と状態（投票中・公認）、投稿時刻だけを保存する。本文・ニックネーム・`user.id` は保存しない
 - 投票は、ボット以外の ⭕ または ❌ が `VOTE_THRESHOLD` 票に達したら確定する。受付は投稿から24時間
-  - ⭕: Embed を「🏆 公認ダジャレ！」（金色、投稿者のニックネーム、フッター「kametti Dajare System」）に書き換え、状態を公認にする
+  - ⭕: Embed を「🏆 公認ダジャレ！」（金色、投稿者のニックネーム、フッター「kametchi Dajare System」）に書き換え、状態を公認にする
   - ❌: 投稿を削除し、記録も消す
 - 投票はリアクションのイベントと DB の記録で数える（旧版の ReactionCollector と違い、再起動しても受付を続ける）。同じ投稿へのリアクションは1件ずつ順に処理し、同時に届いても二重に確定させず、取りこぼさない
 - 公認の Embed に載せるニックネームは、候補の Embed から読み取る（DB には保存しない）
@@ -349,7 +349,7 @@ Lens からの変更: Discord からのコメントは、送った結果（送�
 | ---- | ---- |
 | `APP_BASE_URL` | 例: `https://kametchi.com`（開発: `http://localhost:8790`） |
 | `PORT`、`HOST` | 既定 8790、`127.0.0.1`（本番は NPM から届くアドレス） |
-| `DATABASE_URL` | `postgres://kametti:...@192.168.0.109:5432/kametti` |
+| `DATABASE_URL` | `postgres://kametchi:...@192.168.0.109:5432/kametchi` |
 | `TOKEN_ENCRYPTION_KEY` | 32バイトを base64 で |
 | `SPOON_BASE_URL`、`SPOON_AUTHORIZE_URL`、`SPOON_CLIENT_ID`、`SPOON_CLIENT_SECRET`、`SPOON_REDIRECT_URI` | Spoon Developers（`SPOON_REDIRECT_URI` は `APP_BASE_URL` と同じオリジン） |
 | `DISCORD_BOT_TOKEN`、`DISCORD_APP_ID`、`DISCORD_GUILD_ID` | 旧 kametti と同じ |

@@ -37,7 +37,7 @@ export function createWebApp(deps: WebAppDeps): Hono {
   const app = new Hono();
   const origin = new URL(deps.baseUrl).origin;
   const secure = deps.secureCookies;
-  const cookieName = secure ? "__Host-kametti_link" : "kametti_link";
+  const cookieName = secure ? "__Host-kametchi_link" : "kametchi_link";
   const callbackPath = new URL(deps.spoonRedirectUri).pathname;
 
   app.use(

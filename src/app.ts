@@ -250,7 +250,7 @@ export async function startApp(config: Config, db: Database, logger: AppLogger) 
     },
     onError,
   });
-  logger.info("kametti started", { linked: link.isLinked() });
+  logger.info("kametchi started", { linked: link.isLinked() });
 
   return {
     web,

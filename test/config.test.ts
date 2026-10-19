@@ -4,7 +4,7 @@ import { ConfigError, loadConfig } from "../src/config.js";
 
 const valid = {
   APP_BASE_URL: "https://kametchi.com",
-  DATABASE_URL: "postgres://kametti:pw@192.168.0.109:5432/kametti",
+  DATABASE_URL: "postgres://kametchi:pw@192.168.0.109:5432/kametchi",
   TOKEN_ENCRYPTION_KEY: randomBytes(32).toString("base64"),
   SPOON_BASE_URL: "https://jp-openapi.spooncast.net",
   SPOON_AUTHORIZE_URL: "https://developers.spooncast.net/jp/oauth/authorize",

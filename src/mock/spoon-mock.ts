@@ -6,7 +6,7 @@ import type { FetchLike } from "../spoon/http.js";
 /**
  * Spoon Developers API のモック。公式ドキュメント（v1.1.0）の挙動を再現し、
  * 運用承認前の開発とテストで本物の代わりに使う（Spoon Listener Lens のモックを、
- * kametti が使う API だけに絞ったもの。仕様書 §3）。
+ * kametchi が使う API だけに絞ったもの。仕様書 §3）。
  *
  * 再現する主な挙動:
  * - OAuth: code は60秒・1回限り、redirect_uri の完全一致、Refresh Token の回転、revoke

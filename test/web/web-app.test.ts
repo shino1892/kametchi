@@ -75,7 +75,7 @@ describe("連携用ページ", () => {
     expect(location.searchParams.get("redirect_uri")).toBe(REDIRECT_URI);
 
     const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toMatch(/^kametti_link=/);
+    expect(cookie).toMatch(/^kametchi_link=/);
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=Lax");
 
@@ -169,7 +169,7 @@ describe("そのほかのページとヘッダー", () => {
       headers: { Origin: "https://kametchi.com" },
     });
     const cookie = response.headers.get("set-cookie") ?? "";
-    expect(cookie).toMatch(/^__Host-kametti_link=/);
+    expect(cookie).toMatch(/^__Host-kametchi_link=/);
     expect(cookie).toContain("Secure");
   });
 });

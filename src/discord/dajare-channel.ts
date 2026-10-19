@@ -96,7 +96,7 @@ function handleOf(message: Message): DajareMessageHandle {
         .setAuthor({ name: "🏆 公認ダジャレ！" })
         .setTitle(original?.title ?? "")
         .addFields({ name: "投稿者", value: nickname || "リスナー", inline: true })
-        .setFooter({ text: "kametti Dajare System" })
+        .setFooter({ text: "kametchi Dajare System" })
         .setTimestamp();
       await message.edit({ embeds: [approved] });
     },

@@ -1,7 +1,7 @@
 import { defineConfig } from "vitest/config";
 
 // pnpm test:pg（--mode pg）では、PGlite の代わりに本物の PostgreSQL でテストする
-const PG_DEFAULT_URL = "postgres://kametti:kametti@localhost:5432/kametti";
+const PG_DEFAULT_URL = "postgres://kametchi:kametchi@localhost:5432/kametchi";
 
 export default defineConfig(({ mode }) => ({
   test: {

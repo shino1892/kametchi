@@ -1,42 +1,42 @@
-# kametti 運用手順書
+# kametchi 運用手順書
 
 本番環境の構成、デプロイ、バックアップ、障害時の対応をまとめる。設計は [仕様書](spec.md) を参照。
 
 ## 1. 構成
 
 ```text
-[推しのブラウザ] --https--> [Nginx Proxy Manager 192.168.0.100] --http:8790--> [kametti 192.168.0.111]
-                             kametchi.com（Let's Encrypt）                        pm2: kametti
+[推しのブラウザ] --https--> [Nginx Proxy Manager 192.168.0.100] --http:8790--> [kametchi 192.168.0.111]
+                             kametchi.com（Let's Encrypt）                        pm2: kametchi
                                                                                   |  |
 [Discord] <------------------------------------------------- discord.js -------+  |
                                                  PostgreSQL 17 <------------------+  (SSL)
-                                                 192.168.0.109 / DB: kametti
-[kametti] --https--> Spoon Developers API（jp-openapi.spooncast.net）
+                                                 192.168.0.109 / DB: kametchi
+[kametchi] --https--> Spoon Developers API（jp-openapi.spooncast.net）
 ```
 
 | 項目 | 値 |
 | ---- | -- |
 | URL | https://kametchi.com（連携用ページ、`/privacy`、`/healthz` だけ） |
-| アプリサーバー | 192.168.0.111（Ubuntu 24.04 LXC、メモリ 1GB、スワップ 512MB）、root、鍵 `~/.ssh/kametti-server_ed25519` |
+| アプリサーバー | 192.168.0.111（Ubuntu 24.04 LXC、メモリ 1GB、スワップ 512MB）、root、鍵 `~/.ssh/kametchi-server_ed25519` |
 | DB サーバー | 192.168.0.109（PostgreSQL 17、Lens と共用）、root、鍵 `~/.ssh/spoon-db-server_ed25519` |
-| 配置 | `/opt/kametti/releases/<コミット>`、`current` が使用中の版へのリンク |
-| 設定 | `/opt/kametti/shared/.env`（権限 600。各リリースからリンク） |
-| プロセス | pm2 の `kametti`（OS 起動時に `pm2-root.service` が復元）。メモリが 450MB を超えたら再起動 |
+| 配置 | `/opt/kametchi/releases/<コミット>`、`current` が使用中の版へのリンク |
+| 設定 | `/opt/kametchi/shared/.env`（権限 600。各リリースからリンク） |
+| プロセス | pm2 の `kametchi`（OS 起動時に `pm2-root.service` が復元）。メモリが 450MB を超えたら再起動 |
 | ファイアウォール | アプリサーバーの nftables で、8790 番は NPM（192.168.0.100）とサーバー内からだけ受ける（`/etc/nftables.conf`。元の設定は `/etc/nftables.conf.orig`） |
-| DB | ロール・DB とも `kametti`。ほかのユーザーは接続できない（`REVOKE CONNECT ... FROM PUBLIC`） |
-| バックアップ | DB サーバーで毎日 4:45 に `pg_dump`（`/usr/local/sbin/kametti-backup`、`/etc/cron.d/kametti-backup`）、`/var/backups/kametti` に7日分 |
+| DB | ロール・DB とも `kametchi`。ほかのユーザーは接続できない（`REVOKE CONNECT ... FROM PUBLIC`） |
+| バックアップ | DB サーバーで毎日 4:45 に `pg_dump`（`/usr/local/sbin/kametchi-backup`、`/etc/cron.d/kametchi-backup`）、`/var/backups/kametchi` に7日分 |
 
-DB サーバーには Listener Lens（`listener_lens`）とほかのプロジェクトの DB（`lastkadai`、`sanda_bot`、`syuwa_ti`）、ロール `spoon_user` がある。kametti の作業ではこれらに触れない。Lens のアプリサーバー（192.168.0.108）にも触れない。
+DB サーバーには Listener Lens（`listener_lens`）とほかのプロジェクトの DB（`lastkadai`、`sanda_bot`、`syuwa_ti`）、ロール `spoon_user` がある。kametchi の作業ではこれらに触れない。Lens のアプリサーバー（192.168.0.108）にも触れない。
 
 ## 2. 最初の準備（済み）
 
 | 作業 | 内容 |
 | ---- | ---- |
-| SSH の鍵 | `~/.ssh/kametti-server_ed25519` を作り、アプリサーバーの root に登録した |
+| SSH の鍵 | `~/.ssh/kametchi-server_ed25519` を作り、アプリサーバーの root に登録した |
 | Node | NodeSource の `node_22.x` に切り替えて Node 22 にした。pnpm・pm2 は npm のグローバル |
 | 旧 kametti | pm2 から外し、`/opt/kametti-monitor` を削除した |
-| DB | `CREATE ROLE kametti LOGIN PASSWORD ...`、`CREATE DATABASE kametti OWNER kametti`、`REVOKE CONNECT ON DATABASE kametti FROM PUBLIC` |
-| 設定 | `/opt/kametti/shared/.env` を作った（DB のパスワードと暗号化鍵は生成した値。Discord の値は旧 kametti と同じ） |
+| DB | `CREATE ROLE kametchi LOGIN PASSWORD ...`、`CREATE DATABASE kametchi OWNER kametchi`、`REVOKE CONNECT ON DATABASE kametchi FROM PUBLIC` |
+| 設定 | `/opt/kametchi/shared/.env` を作った（DB のパスワードと暗号化鍵は生成した値。Discord の値は旧 kametti と同じ） |
 | ファイアウォール・自動起動 | nftables の設定、`pm2 startup systemd` |
 
 ### ユーザーの作業
@@ -66,15 +66,15 @@ deploy/deploy.sh
 ### 前の版に戻す
 
 ```sh
-ssh -i ~/.ssh/kametti-server_ed25519 root@192.168.0.111
-cd /opt/kametti && ls -1t releases          # 戻したい版を選ぶ
-ln -sfn /opt/kametti/releases/<コミット> current
-pm2 delete kametti && pm2 start current/deploy/ecosystem.config.cjs && pm2 save
+ssh -i ~/.ssh/kametchi-server_ed25519 root@192.168.0.111
+cd /opt/kametchi && ls -1t releases          # 戻したい版を選ぶ
+ln -sfn /opt/kametchi/releases/<コミット> current
+pm2 delete kametchi && pm2 start current/deploy/ecosystem.config.cjs && pm2 save
 ```
 
 ## 4. 設定と鍵
 
-`/opt/kametti/shared/.env` を編集したら、`pm2 restart kametti --update-env` で反映する。各項目は `.env.example` を参照。値を画面に出さないよう、編集はサーバー上のエディタで行う。
+`/opt/kametchi/shared/.env` を編集したら、`pm2 restart kametchi --update-env` で反映する。各項目は `.env.example` を参照。値を画面に出さないよう、編集はサーバー上のエディタで行う。
 
 | 項目 | 注意 |
 | ---- | ---- |
@@ -82,7 +82,7 @@ pm2 delete kametti && pm2 start current/deploy/ecosystem.config.cjs && pm2 save
 | `TOKEN_ENCRYPTION_KEY` | 変えると保存済みのトークンを復号できなくなり、Spoon連携をやり直す必要がある |
 | `SPOON_CLIENT_SECRET` | 漏洩したら Spoon Developers のコンソールで「再発行」し、`.env` を更新する |
 | `DISCORD_BOT_TOKEN` | 漏洩したら Discord Developer Portal で Reset Token し、`.env` を更新する |
-| `DATABASE_URL` | パスワードを変える場合は DB サーバーで `ALTER ROLE kametti PASSWORD '...'` と同時に更新する |
+| `DATABASE_URL` | パスワードを変える場合は DB サーバーで `ALTER ROLE kametchi PASSWORD '...'` と同時に更新する |
 | `PRIVACY_CONTACT_X`・`PRIVACY_CONTACT_EMAIL` | `/privacy` に載せる窓口（どちらか必須） |
 
 `.env` や鍵をリポジトリ、チャット、ログ、Discord に貼らない。
@@ -90,9 +90,9 @@ pm2 delete kametti && pm2 start current/deploy/ecosystem.config.cjs && pm2 save
 ## 5. 日常の確認
 
 ```sh
-ssh -i ~/.ssh/kametti-server_ed25519 root@192.168.0.111
+ssh -i ~/.ssh/kametchi-server_ed25519 root@192.168.0.111
 pm2 ls                                   # 状態・メモリ・再起動回数
-pm2 logs kametti --lines 100             # ログ（チャット本文・トークンは出さない）
+pm2 logs kametchi --lines 100             # ログ（チャット本文・トークンは出さない）
 curl -s http://127.0.0.1:8790/healthz    # ok
 ```
 
@@ -102,26 +102,26 @@ curl -s http://127.0.0.1:8790/healthz    # ok
 
 ```sh
 ssh -i ~/.ssh/spoon-db-server_ed25519 root@192.168.0.109
-ls -la /var/backups/kametti/
-/usr/local/sbin/kametti-backup           # 手動で取る
+ls -la /var/backups/kametchi/
+/usr/local/sbin/kametchi-backup           # 手動で取る
 ```
 
 復元する場合（アプリを止めてから行う）:
 
 ```sh
 # アプリサーバーで
-pm2 stop kametti
+pm2 stop kametchi
 # DB サーバーで
-runuser -u postgres -- pg_restore --clean --if-exists -d kametti /var/backups/kametti/<ファイル>.dump
+runuser -u postgres -- pg_restore --clean --if-exists -d kametchi /var/backups/kametchi/<ファイル>.dump
 # アプリサーバーで
-pm2 start kametti
+pm2 start kametchi
 ```
 
 ## 7. 障害時の対応
 
 | 症状 | 確認すること・対応 |
 | ---- | ------------------ |
-| 起動しない | `pm2 logs kametti`。`invalid configuration` なら `.env` の項目（値は出さずにキー名で確認）。DB に接続できるか |
+| 起動しない | `pm2 logs kametchi`。`invalid configuration` なら `.env` の項目（値は出さずにキー名で確認）。DB に接続できるか |
 | 連携用ページが開けない | `curl http://127.0.0.1:8790/healthz`。NPM のプロキシホストと証明書。nftables の設定 |
 | Discord のコマンドが出ない | 起動時の登録の失敗（ログの `discord`）。`DISCORD_APP_ID`・`DISCORD_GUILD_ID` |
 | チャットチャンネルの投稿が送られない | Message Content Intent がオンか。ボットが配信に参加しているか（⚠️ の返信の理由） |
@@ -132,6 +132,6 @@ pm2 start kametti
 ## 8. 利用をやめるとき
 
 1. Discord で `/unlink` を実行する（トークンの無効化、ダジャレの投稿と DB のデータの削除）
-2. `pm2 delete kametti && pm2 save`
-3. DB サーバーで `DROP DATABASE kametti; DROP ROLE kametti;`、`/etc/cron.d/kametti-backup` と `/var/backups/kametti` を削除する
+2. `pm2 delete kametchi && pm2 save`
+3. DB サーバーで `DROP DATABASE kametchi; DROP ROLE kametchi;`、`/etc/cron.d/kametchi-backup` と `/var/backups/kametchi` を削除する
 4. Spoon Developers でアプリを削除する

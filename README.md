@@ -1,4 +1,4 @@
-# kametti
+# kametchi
 
 推しの Spoon 配信を手伝う Discord ボットです。**Spoon Developers 公式 API** だけを使います（旧版の非公式ライブラリ `@sopia-bot/core` は使いません）。
 

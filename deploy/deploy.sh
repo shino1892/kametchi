@@ -4,13 +4,13 @@
 #   deploy/deploy.sh
 #
 # コミット済みの内容を手元でテスト・ビルドし、サーバーの
-# /opt/kametti/releases/<コミット> に配置して current を切り替える。
+# /opt/kametchi/releases/<コミット> に配置して current を切り替える。
 # サーバーのメモリが少ないため、ビルドは手元で行い、サーバーでは本番用の依存だけを入れる。
 set -euo pipefail
 
 HOST="${DEPLOY_HOST:-192.168.0.111}"
-KEY="${DEPLOY_KEY:-$HOME/.ssh/kametti-server_ed25519}"
-APP_DIR=/opt/kametti
+KEY="${DEPLOY_KEY:-$HOME/.ssh/kametchi-server_ed25519}"
+APP_DIR=/opt/kametchi
 PORT=8790
 KEEP_RELEASES=3
 SSH=(ssh -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes "root@$HOST")
@@ -29,12 +29,12 @@ pnpm test
 rm -rf dist
 pnpm build
 
-ARCHIVE="$(mktemp -t kametti-XXXXXX.tgz)"
+ARCHIVE="$(mktemp -t kametchi-XXXXXX.tgz)"
 trap 'rm -f "$ARCHIVE"' EXIT
 tar -czf "$ARCHIVE" --owner=0 --group=0 dist migrations package.json pnpm-lock.yaml deploy/ecosystem.config.cjs
 
 echo "==> $HOST に送ります"
-scp -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -q "$ARCHIVE" "root@$HOST:/tmp/kametti-$REV.tgz"
+scp -i "$KEY" -o IdentitiesOnly=yes -o BatchMode=yes -q "$ARCHIVE" "root@$HOST:/tmp/kametchi-$REV.tgz"
 
 "${SSH[@]}" bash -s -- "$REV" "$APP_DIR" "$KEEP_RELEASES" "$PORT" <<'REMOTE'
 set -euo pipefail
@@ -46,8 +46,8 @@ test -f "$APP_DIR/shared/.env" || { echo "$APP_DIR/shared/.env がありませ�
 rm -rf "$RELEASE"
 mkdir -p "$RELEASE"
 # 手元（Windows）のファイル所有者は引き継がない
-tar -xzf "/tmp/kametti-$REV.tgz" -C "$RELEASE" --no-same-owner
-rm -f "/tmp/kametti-$REV.tgz"
+tar -xzf "/tmp/kametchi-$REV.tgz" -C "$RELEASE" --no-same-owner
+rm -f "/tmp/kametchi-$REV.tgz"
 ln -sfn "$APP_DIR/shared/.env" "$RELEASE/.env"
 
 cd "$RELEASE"
@@ -55,7 +55,7 @@ pnpm install --prod --frozen-lockfile --silent
 
 ln -sfn "$RELEASE" "$APP_DIR/current"
 # 停止すると配信から退室する（再起動後は退室した状態から始まる）
-pm2 delete kametti >/dev/null 2>&1 || true
+pm2 delete kametchi >/dev/null 2>&1 || true
 pm2 start "$APP_DIR/current/deploy/ecosystem.config.cjs"
 pm2 save >/dev/null
 
@@ -67,7 +67,7 @@ for _ in $(seq 1 60); do
   fi
   sleep 1
 done
-curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null || { echo "起動を確認できませんでした: pm2 logs kametti" >&2; exit 1; }
+curl -fsS "http://127.0.0.1:$PORT/healthz" >/dev/null || { echo "起動を確認できませんでした: pm2 logs kametchi" >&2; exit 1; }
 
 # 古いリリースを消す（直近 KEEP 個を残す）
 cd "$APP_DIR/releases"

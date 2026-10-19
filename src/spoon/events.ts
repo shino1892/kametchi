@@ -1,5 +1,5 @@
 /**
- * イベントストリーム（GET /v1/live/events）の payload を、kametti が使う最小限の形に変換する。
+ * イベントストリーム（GET /v1/live/events）の payload を、kametchi が使う最小限の形に変換する。
  *
  * 権限を要求していない presence・donation と、使わない値（like の amount・combo など）は
  * ここで捨てる。チャット本文はダジャレ判定と DJ のコマンドのためにメモリ上でだけ使い、

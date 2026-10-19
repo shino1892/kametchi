@@ -2,7 +2,7 @@ import { SpoonApiError } from "./errors.js";
 import type { SpoonHttp } from "./http.js";
 import { type SseItem, SseParser } from "./sse.js";
 
-/** GET /v1/live のうち kametti が使う値（仕様書 §6.1） */
+/** GET /v1/live のうち kametchi が使う値（仕様書 §6.1） */
 export interface LiveInfo {
   liveId: number;
   title: string;

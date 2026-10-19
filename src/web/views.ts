@@ -1,7 +1,7 @@
 import { html } from "hono/html";
 import type { HtmlEscapedString } from "hono/utils/html";
 
-export const APP_NAME = "kametti";
+export const APP_NAME = "kametchi";
 
 export type Html = HtmlEscapedString | Promise<HtmlEscapedString>;
 
@@ -28,7 +28,7 @@ export function linkStartPage(token: string): Html {
   return layout(
     "Spoonと連携する",
     html`<h1>Spoonと連携する</h1>
-      <p>kametti のボットが、あなたの配信でハートのお礼を送ったり、Discord からのコメントを届けたりできるように、Spoon との連携をお願いします。</p>
+      <p>kametchi のボットが、あなたの配信でハートのお礼を送ったり、Discord からのコメントを届けたりできるように、Spoon との連携をお願いします。</p>
       <ul>
         <li><strong>DJ 本人の Spoon アカウント</strong>で同意してください。</li>
         <li>このブラウザでボットのアカウントのまま Spoon Developers にログインしている場合は、シークレットウィンドウでこのページを開き直してください（ボットのアカウントでは連携できません）。</li>
